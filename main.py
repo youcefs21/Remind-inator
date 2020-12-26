@@ -7,9 +7,15 @@ import sqlite3
 
 """
 TODO:
+- add a quit option
+- mention number of hours if minsLeft > 60
 - once all tasks of priority 1 are done, all tasks are move up in priority (2 -> 1, 3 -> 2, etc)
 - repeating daily tasks that add on time every time it's a new day
-- 
+- a move up tag to move up tasks in priority that are just waiting for a prior task 
+  to be done but are equally as important
+- add due dates and increase the probability of tasks with a higher hoursLeft/TimeTilldueDate
+  (if random number above threashold,switch first task with the task that has a higher 
+  ratio of hoursLeft/TimeTilldueDate)
 """
 
 stop = True
@@ -55,16 +61,18 @@ if __name__ == '__main__':
 				print("\n\n"+item[0])
 				inpt = input("\n\nis it possible to do the task above right now?\n")
 
-				if stop:
-					stop = False
-					Thread(target = stopper).start()
-
 				# do the task if the user wants to, otherwise skip
 				if inpt == "yes":
 					
-					#input("\n\nready?\n")
+					# start the stopper if it's not on already
+					if stop:
+						stop = False
+						Thread(target = stopper).start()
 
-					for t in range(item[1]*60):
+					# using a while loop here instead of a for loop because
+					# for range() loop doesn't allow me to extend it 
+					t = 0
+					while t <= item[1]*60:
 
 						# wait one second
 						time.sleep(1)
@@ -102,22 +110,35 @@ if __name__ == '__main__':
 							os.system('spd-say " ' + str((item[1])-int(t/60)) + ' minutes" -i -80 -t child_female')
 
 
-					# big space
-					for _ in range(10):
-						print("\n")
-
-
-					# declaring extraTime in case it's not a hard stop
-					extraTime = 0
-					# if time is up, beeep, and say that out loud
-					if not stop:
-						os.system('play -nq -t alsa synth {} sine {} vol -20dB'.format(1, 440))
-						os.system('spd-say "time is up" -i -20 -t child_female')
-						extraTime = int(input("enter the number of minutes needed to complete the task, 0 if already complete"))
 						
-						if extraTime == 0:
-							doneTask = True
-					
+
+
+						# if time is up, beeep, and say that out loud
+						if (item[1]*60)-t == 0:
+
+							# big space
+							for _ in range(10):
+								print("\n")
+
+							os.system('play -nq -t alsa synth {} sine {} vol -20dB'.format(1, 440))
+							os.system('spd-say "time is up" -i -20 -t child_female')
+
+							print("time is up, press Enter to continue\n\n")
+
+							extraTime = int(input("\n\nenter the number of minutes needed to complete the task, 0 if already complete:\n"))
+							
+							# adding extraTime, then continue with task
+							item[1]+=extraTime
+
+							if extraTime == 0:
+								doneTask = True
+							else:
+								stop = False
+								Thread(target = stopper).start()
+
+						t+=1
+							
+						
 
 					# get current timeUsed and timeLeft
 					db.execute("SELECT timeUsed FROM tasks WHERE task=?",(item[0],))
@@ -126,8 +147,8 @@ if __name__ == '__main__':
 
 					
 					# update timeUsed and timeLeft
-					timeUsed = listT[itemIndex][1]-minsLeft
-					timeLeft = minsLeft + extraTime
+					timeUsed += listT[itemIndex][1]-minsLeft
+					timeLeft = minsLeft
 
 					if doneTask:
 						timeLeft = 0
@@ -139,7 +160,11 @@ if __name__ == '__main__':
 
 					# commit the changes
 					conn.commit()
-
+				
+				else:
+					# big space
+					for _ in range(10):
+						print("\n")
 
 				
 				
