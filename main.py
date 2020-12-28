@@ -1,14 +1,13 @@
 from random import shuffle
 import csv
 import time
-import os
+# import os
+import pyttsx3
 from threading import Thread
 import sqlite3
 
 """
 TODO:
-- add a quit option
-- mention number of hours if minsLeft > 60
 - once all tasks of priority 1 are done, all tasks are move up in priority (2 -> 1, 3 -> 2, etc)
 - repeating daily tasks that add on time every time it's a new day
 - a move up tag to move up tasks in priority that are just waiting for a prior task 
@@ -16,6 +15,8 @@ TODO:
 - add due dates and increase the probability of tasks with a higher hoursLeft/TimeTilldueDate
   (if random number above threashold,switch first task with the task that has a higher 
   ratio of hoursLeft/TimeTilldueDate)
+- tasks can be also devided into moods, some tasks are easier to do when tired than others, and
+  some tasks require some brainstorming time, which could be it's own category
 """
 
 stop = True
@@ -47,6 +48,7 @@ if __name__ == '__main__':
 
 
 	notDone = True
+	endProgram = False 
 	# while not done all tasks, loop
 	while notDone:
 		notDone = False
@@ -86,18 +88,24 @@ if __name__ == '__main__':
 						secondsLeft = ((item[1]*60)-t)%60
 
 						# print out how much time left
-						print(item[0] + "\n\n" + str(minsLeft) + " mins and "+ str(secondsLeft) + " seconds, press Entre to stop")
+						if minsLeft>60:
+							print(item[0] + "\n\n" + str(int(minsLeft/60)) + " hours, "+ str(minsLeft%60) + " mins and "+ str(secondsLeft) + " seconds, press Entre to stop")
+						else:
+							print(item[0] + "\n\n" + str(minsLeft) + " mins and "+ str(secondsLeft) + " seconds, press Entre to stop")
 
 						# if Entre was pressed, break
 						if stop:
 							for _ in range(10):
 								print("\n")
-							stopOptions = input("press Enter to continue, 'n' for next, and 'd' for done\n\n")
+							stopOptions = input("press Enter to continue, 'n' for next, 'd' for done, and 'q' for quit\n\n")
 
 							if stopOptions == "n":
 								break
 							elif stopOptions == "d":
 								doneTask = True
+								break
+							elif stopOptions == "q":
+								endProgram = True
 								break
 							else:
 								stop = False
@@ -105,10 +113,10 @@ if __name__ == '__main__':
 
 							
 
-						# if time is a mutiple of 5 mins, announce it out loud
+						# if time is a mutiple of 5 mins exactly, announce it out loud
 						if ((item[1]*60)-t)%300 == 0:
-							os.system('spd-say " ' + str((item[1])-int(t/60)) + ' minutes" -i -80 -t child_female')
-
+							# os.system('spd-say " ' + str(int(minsLeft/60)) + " hours and " + str(minsLeft%60) + ' minutes left" -i -80 -t child_female')
+							pyttsx3.speak(str(int(minsLeft/60)) + " hours and " + str(minsLeft%60) + " minutes left")
 
 						
 
@@ -120,8 +128,9 @@ if __name__ == '__main__':
 							for _ in range(10):
 								print("\n")
 
-							os.system('play -nq -t alsa synth {} sine {} vol -20dB'.format(1, 440))
-							os.system('spd-say "time is up" -i -20 -t child_female')
+							# os.system('play -nq -t alsa synth {} sine {} vol -20dB'.format(1, 440))
+							# os.system('spd-say "time is up" -i -20 -t child_female')
+							pyttsx3.speak("time is up")
 
 							print("time is up, press Enter to continue\n\n")
 
@@ -160,11 +169,16 @@ if __name__ == '__main__':
 
 					# commit the changes
 					conn.commit()
+
+					# exit program if the user selected the quit option
+					if endProgram:
+						conn.close()
+						exit(0)
 				
-				else:
-					# big space
-					for _ in range(10):
-						print("\n")
+			
+				# big space
+				for _ in range(10):
+					print("\n")
 
 				
 				
@@ -175,6 +189,9 @@ if __name__ == '__main__':
 
 		# reshuffle the list every time we loop through it
 		shuffle(listT)
+
+
+	# TODO here move all tasks 1 priority up
 
 
 	# close the database after done using it

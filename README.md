@@ -1,6 +1,6 @@
 # Remind-inator!
 
-**Version Alpha_0.1.1**
+**Version Alpha_0.1.3**
 
 For those moments when you really need something to keep you going, behold the Remind-inator!
 
@@ -11,17 +11,36 @@ The goal of this project is to provide a simple tool that forces you to do what 
 ## Usage:
 
 #### Step 1:
-Fill in the given TODO.csv by using a text editor, or uploading it into a Google Sheets, and then redownload it after it's filled in
+Fill in the given TODO.csv using a text editor, or upload it into a Google Sheets, and then redownload it after it's filled in
 #### Step 2:
-Run sqlSetup.py
+Run sqlSetup.py (the filled in TODO.csv must be called exactly that, and must be in the same directory as the sqlSetup.py)
 #### Step 3:
-Run main.py when ever you need to use it. There is currently no exit function, so you'll just have to terminate the program during the prompt that asks you if you can do the given task. Terminating at any other point will cause lose in data.
+In a terminal, `pip install pyttsx3`
+#### Step 4:
+Run main.py whenever you need to use it. You can pause a task at anytime by pressing Entre in the terminal running main.py. Quit using the quit option when a task is paused.
 
-The program is currently meant to be run in a linux terminal, and is not expected to work anywhere else. It will eventually be converted to a website when out of alpha.
+#### Debugging:
+##### linux:
+If running main.py returns an error, then `sudo apt update && sudo apt install espeak ffmpeg libespeak1` in a terminal
+##### pyttsx3 install error
+If you get installation errors , make sure you first upgrade your wheel version using :
+`pip install --upgrade wheel`
+
 
 ---
 
 ## Change logs
+
+### Alpha_0.1.3:
+
+#### main.py:
+- Added: Windows support! 
+- Added: Quit option when a task is paused to safely save progress, and terminate the program
+- Changed: If the number of minutes left is larger than 60, the program now mentions the number of hours left
+
+#### README.md:
+- Added: New debugging section under Usage
+- Fixed: Updated outdated information
 
 ### Alpha_0.1.2:
 
