@@ -8,18 +8,17 @@ def setupDatabase():
     c = conn.cursor()
 
     # Create table
-    c.execute('''CREATE TABLE tasks (task text, timeLeft int, priority int, subject text, timeUsed int)''')
+    c.execute('''CREATE TABLE tasks (task text, priority int, timeUsed int)''')
+    c.execute('''CREATE TABLE history (task text, startTime int, endTime int)''')
 
-    # Open csv File and put data into data base
+    # Open csv File and put data into database
     with open("TODO_prod.csv", "r") as file:
         todo = csv.DictReader(file)
         for row in todo:
             c.execute(
-                'INSERT INTO tasks VALUES (?,?,?,?,?)', (
+                'INSERT INTO tasks VALUES (?,?,?)', (
                           row["task"],
-                          int(row["timeLeft"]),
                           int(row["priority"]),
-                          row["subject"],
                           int(row["timeUsed"])
                 )
             )
