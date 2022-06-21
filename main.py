@@ -4,6 +4,7 @@ import time
 
 from pynput import keyboard
 import sqlite3
+from notifypy import Notify
 
 
 class EventHandler:
@@ -33,15 +34,21 @@ class EventHandler:
             time.sleep(1)
 
     def toggle_pause(self):
+        p_notif = Notify()
         if self.p_flag.is_set():
             # pause
+            p_notif.title = "Pausing Task..."
+            p_notif.message = self.current_item['task']
             print("paused at: ", int(time.time()))
             #TODO add to history table
             self.p_flag.clear()
         else:
             # unpause
+            p_notif.title = "Continuing Task..."
+            p_notif.message = self.current_item['task']
             self.p_flag.set()
             print("started at: ", int(time.time()))
+        p_notif.send(block=False)
 
     def next_task(self):
         self.n_flag.clear()
@@ -50,9 +57,11 @@ class EventHandler:
 handler = EventHandler()
 
 my_hotkeys = {
-    '<ctrl>+<alt>+p': handler.toggle_pause,
-    '<ctrl>+<alt>+n': handler.next_task,
+    '<alt>+p': handler.toggle_pause,
+    '<alt>+n': handler.next_task,
 }
+
+c_notif = Notify()
 
 with keyboard.GlobalHotKeys(my_hotkeys) as h:
     while True:
@@ -62,6 +71,9 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 handler.n_flag.set()
                 handler.p_flag.clear()
                 handler.current_item = todo_item
+                c_notif.title = "Coming up..."
+                c_notif.message = todo_item['task']
+                c_notif.send(block=False)
                 print("coming up...", todo_item['task'])
                 handler.main_loop()
         except KeyboardInterrupt:
