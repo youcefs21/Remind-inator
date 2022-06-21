@@ -9,9 +9,8 @@ from notifypy import Notify
 
 class EventHandler:
     def __init__(self):
-        self.p_flag = threading.Event()
+        self.go_flag = threading.Event()
         self.n_flag = threading.Event()
-        self.n_flag.set()
         self.current_item = {}
         self.start_time = 0
         self.current_session_time = 0
@@ -39,13 +38,13 @@ class EventHandler:
         pass
 
     def main_loop(self):
-        while self.n_flag.is_set():
-            self.p_flag.wait()
-            time.sleep(1)
+        while not self.n_flag.is_set():
+            self.go_flag.wait()
+            time.sleep(0.1)
 
     def toggle_pause(self):
         p_notif = Notify()
-        if self.p_flag.is_set():
+        if self.go_flag.is_set():
             # set up pause notification
             p_notif.title = "Pausing Task..."
             p_notif.message = self.current_item['task']
@@ -56,7 +55,7 @@ class EventHandler:
             self.update_history(pause_time)
 
             # pause main_loop
-            self.p_flag.clear()
+            self.go_flag.clear()
         else:
             # set up unpause notification
             p_notif.title = "Continuing Task..."
@@ -70,19 +69,20 @@ class EventHandler:
             self.start_time = int(time.time())
 
             # unpause main_loop
-            self.p_flag.set()
+            self.go_flag.set()
         # send notification
         p_notif.send(block=False)
 
     def next_task(self):
-        self.n_flag.clear()
+        self.n_flag.set()
+        self.go_flag.set()
 
 
 handler = EventHandler()
 
 my_hotkeys = {
-    '<alt>+p': handler.toggle_pause,
-    '<alt>+n': handler.next_task,
+    '<alt>+<ctrl>+p': handler.toggle_pause,
+    '<alt>+<ctrl>+n': handler.next_task,
 }
 
 c_notif = Notify()
@@ -92,14 +92,17 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
         try:
             shuffle(handler.list_t)
             for todo_item in handler.list_t:
-                handler.n_flag.set()
-                handler.p_flag.clear()
+                # turn off next flag and go to next item
+                handler.n_flag.clear()
+                handler.go_flag.clear()
                 handler.current_item = todo_item
+
+                # coming up notification
                 c_notif.title = "Coming up..."
                 c_notif.message = todo_item['task']
                 c_notif.send(block=False)
-                print("coming up...", todo_item['task'])
+
+                # start the task loop
                 handler.main_loop()
         except KeyboardInterrupt:
             handler.conn.close()
-        time.sleep(1)
