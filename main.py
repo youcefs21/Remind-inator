@@ -9,9 +9,9 @@ import sqlite3
 class EventHandler:
     def __init__(self):
         self.p_flag = threading.Event()
-        self.p_flag.set()
         self.n_flag = threading.Event()
         self.n_flag.set()
+        self.current_item = {}
 
         # turn on the database
         self.conn = sqlite3.connect('TODO.db')
@@ -27,19 +27,21 @@ class EventHandler:
             print("there is no more items left")
             exit(1)
 
-    def main_loop(self, item):
+    def main_loop(self):
         while self.n_flag.is_set():
             self.p_flag.wait()
-            print(int(time.time()), item['task'])
             time.sleep(1)
 
     def toggle_pause(self):
         if self.p_flag.is_set():
             # pause
+            print("paused at: ", int(time.time()))
+            #TODO add to history table
             self.p_flag.clear()
         else:
             # unpause
             self.p_flag.set()
+            print("started at: ", int(time.time()))
 
     def next_task(self):
         self.n_flag.clear()
@@ -58,7 +60,10 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
             shuffle(handler.list_t)
             for todo_item in handler.list_t:
                 handler.n_flag.set()
-                handler.main_loop(todo_item)
+                handler.p_flag.clear()
+                handler.current_item = todo_item
+                print("coming up...", todo_item['task'])
+                handler.main_loop()
         except KeyboardInterrupt:
             handler.conn.close()
         time.sleep(1)
