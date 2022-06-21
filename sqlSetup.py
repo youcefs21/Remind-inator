@@ -8,8 +8,8 @@ def setupDatabase():
     c = conn.cursor()
 
     # Create table
-    c.execute('''CREATE TABLE tasks (task text, priority int, timeUsed int)''')
-    c.execute('''CREATE TABLE history (task text, startTime int, endTime int)''')
+    c.execute("CREATE TABLE tasks (task text, priority int, timeUsed int)")
+    c.execute("CREATE TABLE history (task text, startTime int, endTime int)")
 
     # Open csv File and put data into database
     with open("TODO_prod.csv", "r") as file:
