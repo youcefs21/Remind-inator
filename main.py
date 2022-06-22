@@ -26,13 +26,27 @@ class EventHandler:
             exit(1)
 
     def refresh_list(self):
-        self.db.execute("SELECT task,timeUsed FROM tasks WHERE priority=1")
+        self.db.execute("SELECT task,timeUsed FROM tasks WHERE priority>=1")
 
         list_t = self.db.fetchall()
-        return [{'task': i[0], 'timeUsed': i[1]} for i in list_t]
+        return [{'task': i[0], 'time': i[1]} for i in list_t]
 
-    def update_task(self, updated_task):
-        pass
+    def update_task(self):
+        # if s_time isn't given, use self.current_session_time
+        s_time = self.current_session_time + int(time.time()) - self.start_time
+        total_time = self.current_item["time"] + s_time
+        self.db.execute("UPDATE tasks SET timeUsed=? WHERE task=?", (total_time, self.current_item["task"]))
+        self.conn.commit()
+
+    def reminder(self, s_time):
+        # reminder notification
+        total_time = self.current_item["time"] + s_time
+        r_notif = Notify()
+        r_notif.title = "Stay on task"
+        r_notif.message = f"{self.current_item['task']}\n" + \
+                          f"current session: {s_time} seconds\n" + \
+                          f"total time: {total_time} seconds"
+        r_notif.send(block=False)
 
     def update_history(self, end_time):
         pass
@@ -88,8 +102,8 @@ my_hotkeys = {
 c_notif = Notify()
 
 with keyboard.GlobalHotKeys(my_hotkeys) as h:
-    while True:
-        try:
+    try:
+        while True:
             shuffle(handler.list_t)
             for todo_item in handler.list_t:
                 # turn off next flag and go to next item
@@ -104,5 +118,9 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
 
                 # start the task loop
                 handler.main_loop()
-        except KeyboardInterrupt:
-            handler.conn.close()
+                handler.update_task()
+            # refresh list after going through all the tasks
+            handler.list_t = handler.refresh_list()
+    except KeyboardInterrupt:
+        handler.update_task()
+        handler.conn.close()
