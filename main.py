@@ -6,14 +6,16 @@ from pynput import keyboard
 import sqlite3
 from notifypy import Notify
 
-
+"""
+have a separate thread that triggers reminder every 5 minutes independent of the handler
+"""
 class EventHandler:
     def __init__(self):
         self.go_flag = threading.Event()
         self.n_flag = threading.Event()
-        self.current_item = {}
-        self.start_time = 0
-        self.current_session_time = 0
+        self.current_item = {}  # a variable that holds {task, time} exclusive of current session time
+        self.start_time = 0  # a variable that holds the unix time of the most recent unpause
+        self.current_session_time = 0  # a variable that holds time spent on task till the most recent pause
 
         # turn on the database
         self.conn = sqlite3.connect('TODO.db')
@@ -31,18 +33,26 @@ class EventHandler:
         list_t = self.db.fetchall()
         return [{'task': i[0], 'time': i[1]} for i in list_t]
 
+    def get_s_time(self):
+        if not self.go_flag.is_set():
+            self.start_time = int(time.time())
+        return self.current_session_time + int(time.time()) - self.start_time
+
     def update_task(self):
-        # if s_time isn't given, use self.current_session_time
-        s_time = self.current_session_time + int(time.time()) - self.start_time
+        s_time = self.get_s_time()
         total_time = self.current_item["time"] + s_time
         self.db.execute("UPDATE tasks SET timeUsed=? WHERE task=?", (total_time, self.current_item["task"]))
         self.conn.commit()
 
-    def reminder(self, s_time):
+    def reminder(self):
         # reminder notification
+        s_time = self.get_s_time()
         total_time = self.current_item["time"] + s_time
         r_notif = Notify()
-        r_notif.title = "Stay on task"
+        if self.go_flag.is_set():
+            r_notif.title = "Stay on task"
+        else:
+            r_notif.title = "Currently Paused..."
         r_notif.message = f"{self.current_item['task']}\n" + \
                           f"current session: {s_time} seconds\n" + \
                           f"total time: {total_time} seconds"
@@ -55,6 +65,8 @@ class EventHandler:
         while not self.n_flag.is_set():
             self.go_flag.wait()
             time.sleep(0.1)
+
+        self.current_session_time = 0
 
     def toggle_pause(self):
         p_notif = Notify()
@@ -92,6 +104,21 @@ class EventHandler:
         self.go_flag.set()
 
 
+def r_clock(handler_obj: EventHandler):
+    t = int(time.time())
+    last_reminder = t
+    while True:
+        if handler_obj.n_flag.is_set():
+            continue
+
+        t = int(time.time())
+        if t - last_reminder > 300:
+            handler_obj.reminder()
+            last_reminder = t
+
+        time.sleep(0.5)
+
+
 handler = EventHandler()
 
 my_hotkeys = {
@@ -102,6 +129,7 @@ my_hotkeys = {
 c_notif = Notify()
 
 with keyboard.GlobalHotKeys(my_hotkeys) as h:
+    threading.Thread(target=r_clock, args=(handler,)).start()
     try:
         while True:
             shuffle(handler.list_t)
