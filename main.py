@@ -6,9 +6,7 @@ from pynput import keyboard
 import sqlite3
 from notifypy import Notify
 
-"""
-have a separate thread that triggers reminder every 5 minutes independent of the handler
-"""
+
 class EventHandler:
     def __init__(self):
         self.go_flag = threading.Event()
@@ -28,7 +26,7 @@ class EventHandler:
             exit(1)
 
     def refresh_list(self):
-        self.db.execute("SELECT task,timeUsed FROM tasks WHERE priority>=1")
+        self.db.execute("SELECT task,timeUsed FROM tasks WHERE priority<=1")
 
         list_t = self.db.fetchall()
         return [{'task': i[0], 'time': i[1]} for i in list_t]
@@ -59,14 +57,24 @@ class EventHandler:
         r_notif.send(block=False)
 
     def update_history(self, end_time):
-        pass
+        # need to open a new object since the obj in self is in a different thread
+        conn = sqlite3.connect('TODO.db')
+        db = conn.cursor()
+        db.execute(
+            "INSERT INTO history VALUES (?,?,?)",
+            (
+                self.current_item['task'],
+                self.start_time,
+                end_time
+            )
+        )
+        conn.commit()
+        conn.close()
 
     def main_loop(self):
         while not self.n_flag.is_set():
             self.go_flag.wait()
             time.sleep(0.1)
-
-        self.current_session_time = 0
 
     def toggle_pause(self):
         p_notif = Notify()
@@ -147,6 +155,7 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 # start the task loop
                 handler.main_loop()
                 handler.update_task()
+                handler.current_session_time = 0
             # refresh list after going through all the tasks
             handler.list_t = handler.refresh_list()
     except KeyboardInterrupt:
