@@ -39,7 +39,10 @@ class EventHandler:
     def get_s_time(self):
         logging.debug("retrieving s_time")
         if not self.go_flag.is_set():
-            logging.debug("go_flag is not set, start_time has been set to now")
+            logging.debug(f"currently paused, s_time is {self.current_session_time}")
+            return self.current_session_time
+        if self.start_time == 0:
+            logging.debug("start_time is 0, start_time has been set to now")
             self.start_time = int(time.time())
         s_time = self.current_session_time + int(time.time()) - self.start_time
         logging.debug(f"s_time is {s_time}")
@@ -66,8 +69,8 @@ class EventHandler:
         else:
             r_notif.title = "Currently Paused..."
         r_notif.message = f"{self.current_item['task']}\n" + \
-                          f"current session: {hours_minutes(s_time)} seconds\n" + \
-                          f"total time: {hours_minutes(total_time)} seconds"
+                          f"current session: {hours_minutes(s_time)}\n" + \
+                          f"total time: {hours_minutes(total_time)}"
         r_notif.send(block=False)
 
     def update_history(self, end_time):
@@ -114,7 +117,7 @@ class EventHandler:
             logging.info(f"continuing " + self.current_item['task'])
             p_notif.title = "Continuing Task..."
             p_notif.message = f"{self.current_item['task']}\n" + \
-                              f"current session is {hours_minutes(self.current_session_time)} seconds long"
+                              f"current session: {hours_minutes(self.current_session_time)}"
             if self.current_session_time == 0:
                 logging.info("this is the start of a new session")
                 p_notif.title = "Starting Task..."
@@ -195,7 +198,8 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
 
                 # start the task loop
                 handler.current_session_time = 0
-                logging.debug("current session time set to 0")
+                handler.start_time = 0
+                logging.debug("current session time and start time set to 0")
                 handler.main_loop()
                 handler.update_task()
             # refresh list after going through all the tasks
