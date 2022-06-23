@@ -52,8 +52,8 @@ class EventHandler:
         else:
             r_notif.title = "Currently Paused..."
         r_notif.message = f"{self.current_item['task']}\n" + \
-                          f"current session: {s_time} seconds\n" + \
-                          f"total time: {total_time} seconds"
+                          f"current session: {hours_minutes(s_time)} seconds\n" + \
+                          f"total time: {hours_minutes(total_time)} seconds"
         r_notif.send(block=False)
 
     def update_history(self, end_time):
@@ -94,7 +94,7 @@ class EventHandler:
             # set up unpause notification
             p_notif.title = "Continuing Task..."
             p_notif.message = f"{self.current_item['task']}\n" + \
-                              f"current session is {self.current_session_time} seconds long"
+                              f"current session is {hours_minutes(self.current_session_time)} seconds long"
             if self.current_session_time == 0:
                 p_notif.title = "Starting Task..."
                 p_notif.message = self.current_item['task']
@@ -125,6 +125,21 @@ def r_clock(handler_obj: EventHandler):
             last_reminder = t
 
         time.sleep(0.5)
+
+
+def hours_minutes(total_seconds):
+    sec = total_seconds % 60
+    mint = (total_seconds // 60) % 60
+    hours = total_seconds // 3600
+    out = ""
+    if hours > 0:
+        out += f"{hours} hours, "
+    if mint > 0:
+        out += f"{mint} minutes, "
+    if hours == 0:
+        out += f"{sec} seconds"
+
+    return out
 
 
 handler = EventHandler()
