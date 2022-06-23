@@ -15,6 +15,7 @@ class EventHandler:
     def __init__(self):
         self.go_flag = threading.Event()
         self.n_flag = threading.Event()
+        self.quit_flag = threading.Event()
         self.current_item = {}  # a variable that holds {task, time} exclusive of current session time
         self.start_time = 0  # a variable that holds the unix time of the most recent unpause
         self.current_session_time = 0  # a variable that holds time spent on task till the most recent pause
@@ -142,6 +143,9 @@ def r_clock(handler_obj: EventHandler):
     t = int(time.time())
     last_reminder = t
     while True:
+        if handler_obj.quit_flag.is_set():
+            logging.info("breaking out of clock")
+            break
         time.sleep(0.5)
         if handler_obj.n_flag.is_set():
             logging.debug("next flag is set, delaying reminder")
@@ -179,12 +183,15 @@ c_notif = Notify()
 
 with keyboard.GlobalHotKeys(my_hotkeys) as h:
     threading.Thread(target=r_clock, args=(handler,)).start()
-    try:
-        while True:
-            shuffle(handler.list_t)
-            logging.debug("list shuffled")
+    while True:
+        shuffle(handler.list_t)
+        logging.debug("list shuffled")
+        try:
             for todo_item in handler.list_t:
                 # turn off next flag and go to next item
+                handler.current_session_time = 0
+                handler.start_time = 0
+                logging.debug("current session time and start time set to 0")
                 handler.current_item = todo_item
                 logging.debug(f"current item is now {todo_item}")
                 handler.n_flag.clear()
@@ -197,13 +204,16 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 c_notif.send(block=False)
 
                 # start the task loop
-                handler.current_session_time = 0
-                handler.start_time = 0
-                logging.debug("current session time and start time set to 0")
                 handler.main_loop()
                 handler.update_task()
             # refresh list after going through all the tasks
             handler.list_t = handler.refresh_list()
-    except KeyboardInterrupt:
-        handler.update_task()
-        handler.conn.close()
+        except KeyboardInterrupt:
+            handler.quit_flag.set()
+            if handler.start_time == 0:
+                logging.debug("haven't started a new task yet, nothing to be saved")
+                break
+            handler.update_task()
+            if handler.go_flag.is_set():
+                handler.update_history(int(time.time()))
+            handler.conn.close()
