@@ -39,7 +39,7 @@ class EventHandler:
 
     def get_s_time(self):
         logging.debug("retrieving s_time")
-        if not self.go_flag.is_set():
+        if not self.go_flag.is_set() or self.n_flag.is_set():
             logging.debug(f"currently paused, s_time is {self.current_session_time}")
             return self.current_session_time
         if self.start_time == 0:
@@ -152,7 +152,7 @@ def r_clock(handler_obj: EventHandler):
             continue
 
         t = int(time.time())
-        if t - last_reminder > 30:
+        if t - last_reminder > 300:
             handler_obj.reminder()
             last_reminder = t
 
