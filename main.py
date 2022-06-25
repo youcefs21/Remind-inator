@@ -134,6 +134,10 @@ class EventHandler:
 
     def next_task(self):
         logging.info("next flag and go flag are set")
+        # if the timer is going, trigger pause event before going to next
+        if self.go_flag.is_set():
+            self.toggle_pause()
+
         self.n_flag.set()
         self.go_flag.set()
 
