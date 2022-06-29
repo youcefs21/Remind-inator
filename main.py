@@ -18,6 +18,7 @@ class EventHandler:
         self.quit_flag = threading.Event()
         self.current_item = {}  # a variable that holds {task, time} exclusive of current session time
         self.start_time = 0  # a variable that holds the unix time of the most recent unpause
+        self.pause_time = int(time.time())  # a variable that holds the unix time of the most recent pause
         self.current_session_time = 0  # a variable that holds time spent on task till the most recent pause
 
         # turn on the database
@@ -68,7 +69,7 @@ class EventHandler:
         if self.go_flag.is_set():
             r_notif.title = "Stay on task"
         else:
-            r_notif.title = "Currently Paused..."
+            r_notif.title = f"Paused: {hours_minutes( int(time.time()) - self.pause_time )}"
         r_notif.message = f"{self.current_item['task']}\n" + \
                           f"current session: {hours_minutes(s_time)}\n" + \
                           f"total time: {hours_minutes(total_time)}"
@@ -110,6 +111,8 @@ class EventHandler:
             pause_time = int(time.time())
             self.current_session_time += pause_time - self.start_time
             self.update_history(pause_time)
+
+            self.pause_time = int(time.time())
 
             # pause main_loop
             self.go_flag.clear()
@@ -156,7 +159,7 @@ def r_clock(handler_obj: EventHandler):
             continue
 
         t = int(time.time())
-        if t - last_reminder > 300:
+        if t - last_reminder > 60:
             handler_obj.reminder()
             last_reminder = t
 
