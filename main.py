@@ -194,7 +194,7 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
         shuffle(handler.list_t)
         logging.debug("list shuffled")
         try:
-            for todo_item in handler.list_t:
+            for i, todo_item in enumerate(handler.list_t):
                 # turn off next flag and go to next item
                 handler.current_session_time = 0
                 handler.start_time = 0
@@ -206,7 +206,8 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 logging.debug("next flag and go flag cleared")
 
                 # coming up notification
-                c_notif.title = "Coming up..."
+                logging.info(f"Coming up... ({i}/{len(handler.list_t)})")
+                c_notif.title = f"Coming up... ({i}/{len(handler.list_t)})"
                 c_notif.message = todo_item['task']
                 c_notif.send(block=False)
 
