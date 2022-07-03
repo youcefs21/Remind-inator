@@ -206,8 +206,8 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 logging.debug("next flag and go flag cleared")
 
                 # coming up notification
-                logging.info(f"Coming up... ({i}/{len(handler.list_t)})")
-                c_notif.title = f"Coming up... ({i}/{len(handler.list_t)})"
+                logging.info(f"Coming up... ({i+1}/{len(handler.list_t)})")
+                c_notif.title = f"Coming up... ({i+1}/{len(handler.list_t)})"
                 c_notif.message = todo_item['task']
                 c_notif.send(block=False)
 
