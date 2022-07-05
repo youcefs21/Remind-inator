@@ -159,7 +159,7 @@ def r_clock(handler_obj: EventHandler):
             continue
 
         t = int(time.time())
-        if t - last_reminder > 60:
+        if t - last_reminder > 300:
             handler_obj.reminder()
             last_reminder = t
 
@@ -184,6 +184,7 @@ handler = EventHandler()
 my_hotkeys = {
     '<alt>+<ctrl>+p': handler.toggle_pause,
     '<alt>+<ctrl>+n': handler.next_task,
+    '<alt>+<ctrl>+m': handler.reminder
 }
 
 c_notif = Notify()
@@ -225,3 +226,5 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
             if handler.go_flag.is_set():
                 handler.update_history(int(time.time()))
             handler.conn.close()
+            break
+
