@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 import threading
 from random import shuffle
@@ -11,15 +12,23 @@ from notifypy import Notify
 logging.basicConfig(format='%(threadName)s - %(levelname)s - %(asctime)s - %(message)s', level=logging.DEBUG)
 
 
+
 class EventHandler:
     def __init__(self):
+        # event flags
         self.go_flag = threading.Event()
         self.n_flag = threading.Event()
         self.quit_flag = threading.Event()
-        self.current_item = {}  # a variable that holds {task, time} exclusive of current session time
+
+        # time tracking variables
         self.start_time = 0  # a variable that holds the unix time of the most recent unpause
         self.pause_time = int(time.time())  # a variable that holds the unix time of the most recent pause
         self.current_session_time = 0  # a variable that holds time spent on task till the most recent pause
+        self.current_split_time = 0  # a variable that holds time since last unpause
+        self.dayEnd = calcDayEnd()
+        
+        self.current_item = {}  # a variable that holds {task, time} exclusive of current session time
+        self.today_times = defaultdict(int)  # a variable that holds {task, time} where time is the time spent today, exclusive of current split
 
         # turn on the database
         self.conn = sqlite3.connect('TODO.db')
@@ -65,14 +74,14 @@ class EventHandler:
         total_time = self.current_item["time"] + s_time
         logging.debug(f"total time is {total_time}")
         r_notif = Notify()
+        r_notif.message = f"{self.current_item['task']}\n"
         logging.debug(f"go flag is {self.go_flag.is_set()}")
         if self.go_flag.is_set():
             r_notif.title = "Stay on task"
+            r_notif.message += f"current split: {hours_minutes(self.current_split_time)}\n"
         else:
             r_notif.title = f"Paused: {hours_minutes( int(time.time()) - self.pause_time )}"
-        r_notif.message = f"{self.current_item['task']}\n" + \
-                          f"current session: {hours_minutes(s_time)}\n" + \
-                          f"total time: {hours_minutes(total_time)}"
+        r_notif.message += f"Today: {hours_minutes(self.today_times[self.current_item['task']] + self.current_split_time)}"
         r_notif.send(block=False)
 
     def update_history(self, end_time):
@@ -96,6 +105,8 @@ class EventHandler:
         logging.info("in main loop")
         while not self.n_flag.is_set():
             self.go_flag.wait()
+            if self.go_flag.is_set(): # make sure to not undo split reset
+                self.current_split_time = int(time.time()) - self.start_time
             time.sleep(0.1)
         logging.debug("exiting main loop")
 
@@ -114,6 +125,9 @@ class EventHandler:
 
             self.pause_time = int(time.time())
 
+            self.today_times[self.current_item['task']] += self.current_split_time
+            self.current_split_time = 0
+
             # pause main_loop
             self.go_flag.clear()
         else:
@@ -130,6 +144,9 @@ class EventHandler:
             # update start time
             self.start_time = int(time.time())
 
+            # reset split time
+            self.current_split_time = 0
+
             # unpause main_loop
             self.go_flag.set()
         # send notification
@@ -145,6 +162,12 @@ class EventHandler:
         self.go_flag.set()
 
 
+def calcDayEnd():
+    time_n = int(time.time())
+    timeNow = time.localtime(time_n)
+    dayStart = time_n - (timeNow.tm_hour*3600 + timeNow.tm_min*60 + timeNow.tm_sec)
+    return dayStart + 3600*24
+
 def r_clock(handler_obj: EventHandler):
     logging.info("started clock")
     t = int(time.time())
@@ -159,7 +182,18 @@ def r_clock(handler_obj: EventHandler):
             continue
 
         t = int(time.time())
-        if t - last_reminder > 300:
+        if t >= handler_obj.dayEnd:
+            logging.info(f"day has ended! {str(handler_obj.today_times)}")
+            handler_obj.reminder()
+            
+            # reset for new day
+            handler_obj.dayEnd = calcDayEnd()
+            if handler_obj.go_flag.is_set():
+                handler_obj.toggle_pause()
+            handler_obj.current_split_time = 0
+            handler_obj.today_times = defaultdict(int) 
+
+        if t - last_reminder > 300 and handler_obj.go_flag.is_set():
             handler_obj.reminder()
             last_reminder = t
 
@@ -184,7 +218,7 @@ handler = EventHandler()
 my_hotkeys = {
     '<alt>+<ctrl>+p': handler.toggle_pause,
     '<alt>+<ctrl>+n': handler.next_task,
-    '<alt>+<ctrl>+m': handler.reminder
+    '<alt>+<ctrl>+b': handler.reminder
 }
 
 c_notif = Notify()
@@ -199,6 +233,7 @@ with keyboard.GlobalHotKeys(my_hotkeys) as h:
                 # turn off next flag and go to next item
                 handler.current_session_time = 0
                 handler.start_time = 0
+                handler.current_split_time = 0
                 logging.debug("current session time and start time set to 0")
                 handler.current_item = todo_item
                 logging.debug(f"current item is now {todo_item}")
