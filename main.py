@@ -193,7 +193,7 @@ def r_clock(handler_obj: EventHandler):
             handler_obj.current_split_time = 0
             handler_obj.today_times = defaultdict(int) 
 
-        if t - last_reminder > 300 and handler_obj.go_flag.is_set():
+        if (t - last_reminder > 60 and handler_obj.go_flag.is_set()) or (t - last_reminder > 1200):
             handler_obj.reminder()
             last_reminder = t
 
